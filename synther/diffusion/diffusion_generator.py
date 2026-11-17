@@ -1,5 +1,5 @@
 import gin
-import gym
+import gymnasium as gym
 import numpy as np
 
 from synther.diffusion.norm import MinMaxNormalizer

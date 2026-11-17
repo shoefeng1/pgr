@@ -1,6 +1,4 @@
-import gym
 import numpy as np
-from gym.wrappers.flatten_observation import FlattenObservation
 from redq.algos.core import ReplayBuffer
 
 

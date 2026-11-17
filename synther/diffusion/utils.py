@@ -1,12 +1,10 @@
 # Utilities for diffusion.
 from typing import List, Optional, Union
 
-import d4rl
 import gin
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
-from ipdb import set_trace as st
 # GIN-required Imports.
 from synther.diffusion.denoiser_network_cond import ResidualMLPDenoiser
 from synther.diffusion.elucidated_diffusion import ElucidatedDiffusion
@@ -17,7 +15,7 @@ from torch import nn
 @gin.configurable
 def split_diffusion_samples(
         samples: Union[np.ndarray, torch.Tensor],
-        env: gym.Env,
+        env: gym.Env,  # anything exposing observation_space / action_space
         modelled_terminals: bool = False,
         terminal_threshold: Optional[float] = None,
 ):

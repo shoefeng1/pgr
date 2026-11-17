@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgr"
+version = "0.1.0"
+description = "Prioritized Generative Replay"
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
+[tool.setuptools]
+# `redq` is the git submodule at synther/REDQ; exposing it here means `pip install -e .`
+# installs it too, so no separate (pinned) git install of REDQ is needed.
+packages = ["synther", "synther.diffusion", "synther.online", "redq", "redq.algos", "redq.utils"]
+
+[tool.setuptools.package-dir]
+synther = "synther"
+redq = "synther/REDQ/redq"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

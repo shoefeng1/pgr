@@ -11,6 +11,7 @@ from accelerate import Accelerator
 from einops import reduce
 from ema_pytorch import EMA
 from redq.algos.core import ReplayBuffer
+from synther.device import get_device
 from synther.diffusion.norm import BaseNormalizer
 from synther.online.utils import make_inputs_from_replay_buffer
 from torch import nn
@@ -267,7 +268,10 @@ class Trainer(object):
             split_batches: bool = True,
     ):
         super().__init__()
+        # `cpu=` pins accelerate to the same device the SAC agent uses; without it accelerate
+        # would silently pick `mps` on Apple Silicon while the agent stays on the CPU.
         self.accelerator = Accelerator(
+            cpu=get_device().type == 'cpu',
             split_batches=split_batches,
             mixed_precision='fp16' if fp16 else 'no'
         )
@@ -290,7 +294,7 @@ class Trainer(object):
                 self.batch_size = train_batch_size
             print(f'Using batch size: {self.batch_size}')
             # dataset and dataloader
-            dl = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=cpu_count())
+            dl = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=torch.cuda.is_available(), num_workers=cpu_count())
             dl = self.accelerator.prepare(dl)
             self.dl = cycle(dl)
         else:
@@ -364,7 +368,7 @@ class Trainer(object):
         accelerator = self.accelerator
         device = accelerator.device
 
-        data = torch.load(str(self.results_folder / f'model-{milestone}.pt'), map_location=device)
+        data = torch.load(str(self.results_folder / f'model-{milestone}.pt'), map_location=device, weights_only=False)
 
         model = self.accelerator.unwrap_model(self.model)
         model.load_state_dict(data['model'])
@@ -518,7 +522,7 @@ class REDQCondTrainer(Trainer):
         accelerator = self.accelerator
         device = accelerator.device
 
-        data = torch.load(str(self.results_folder / f'model-ep{epoch}-step{milestone}.pt'), map_location=device)
+        data = torch.load(str(self.results_folder / f'model-ep{epoch}-step{milestone}.pt'), map_location=device, weights_only=False)
 
         irews_buf = np.load(str(self.results_folder / f'irews_buf-ep{epoch}-step{milestone}.npy'))
         top_frac_indices = np.load(str(self.results_folder / f'top_frac_indices-ep{epoch}-step{milestone}.npy'))

@@ -5,12 +5,11 @@ warnings.filterwarnings("ignore")
 import sys
 import time
 
-import dmcgym
 import gin
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
-from gym.wrappers.flatten_observation import FlattenObservation
+from gymnasium.wrappers import FlattenObservation
 from redq.algos.core import mbpo_epoches, test_agent
 from redq.utils.bias_utils import log_bias_evaluation
 from redq.utils.logx import EpochLogger
@@ -18,6 +17,8 @@ from redq.utils.run_utils import setup_logger_kwargs
 from synther.diffusion.elucidated_diffusion import REDQCondTrainer
 from synther.diffusion.diffusion_generator import CondDiffusionGenerator
 from synther.diffusion.utils import construct_diffusion_model
+from synther.device import get_device, set_device
+from synther.online.dmc_env import ClipToActionSpace, LegacyStepAPI, make_env
 from synther.online.redq_rlpd_agent import REDQRLPDCondAgent
 
 
@@ -68,8 +69,8 @@ def redq_sac(
         n_mc_cutoff=350,
         reseed_each_epoch=True,
 ):
-    # use gpu if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # cuda if available, else cpu (override with --device / SYNTHER_DEVICE, see synther/device.py)
+    device = get_device()
     print(f"Training using device: {device}")
     # set number of epoch
     if epochs == 'mbpo' or epochs < 0:
@@ -81,7 +82,7 @@ def redq_sac(
     logger.save_config(locals())
 
     """set up environment and seeding"""
-    env_fn = lambda: wrap_gym(gym.make(env_name))
+    env_fn = lambda: LegacyStepAPI(wrap_gym(make_env(env_name)))
     env, test_env, bias_eval_env = env_fn(), env_fn(), env_fn()
     # seed torch and numpy
     torch.manual_seed(seed)
@@ -97,11 +98,11 @@ def redq_sac(
         torch.manual_seed(env_seed)
         np.random.seed(env_seed)
         env.seed(env_seed)
-        env.action_space.np_random.seed(env_seed)
+        env.action_space.seed(env_seed)
         test_env.seed(test_env_seed)
-        test_env.action_space.np_random.seed(test_env_seed)
+        test_env.action_space.seed(test_env_seed)
         bias_eval_env.seed(bias_eval_env_seed)
-        bias_eval_env.action_space.np_random.seed(bias_eval_env_seed)
+        bias_eval_env.action_space.seed(bias_eval_env_seed)
 
     seed_all(epoch=0)
 
@@ -287,39 +288,42 @@ def redq_sac(
 
 def wrap_gym(env: gym.Env, rescale_actions: bool = True) -> gym.Env:
     if rescale_actions:
-        env = gym.wrappers.RescaleAction(env, -1, 1)
+        env = gym.wrappers.RescaleAction(env, min_action=-1, max_action=1)
 
     if isinstance(env.observation_space, gym.spaces.Dict):
         env = FlattenObservation(env)
 
-    env = gym.wrappers.ClipAction(env)
+    env = ClipToActionSpace(env)
 
     return env
 
 
-def get_time_limit(env: gym.Env):
-    if hasattr(env, 'spec'):
-        if hasattr(env.spec, 'max_episode_steps'):
-            return env.spec.max_episode_steps
-    if hasattr(env, 'env'):
-        return get_time_limit(env.env)
-    if hasattr(env, 'unwrapped'):
-        return get_time_limit(env.unwrapped)
-    else:
-        raise ValueError("Cannot find time limit for env")
+def get_time_limit(env):
+    # gymnasium.make() envs carry it in `spec`; DMCEnv exposes `max_episode_steps` directly.
+    spec = getattr(env, 'spec', None)
+    if spec is not None and getattr(spec, 'max_episode_steps', None) is not None:
+        return spec.max_episode_steps
+    limit = getattr(env.unwrapped, 'max_episode_steps', None)
+    if limit is not None:
+        return limit
+    raise ValueError("Cannot find time limit for env")
 
 
 if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='Hopper-v2')
+    parser.add_argument('--env', type=str, default='cheetah-run-v0')
     parser.add_argument('--log_dir', type=str, default='online_logs')
     parser.add_argument('--results_folder', type=str, default='./results')
     parser.add_argument('--gin_config_files', nargs='*', type=str,
-                        default=['config/online/sac_synther_dmc.gin'])
+                        default=['config/online/sac_cond_synther_dmc.gin'])
     parser.add_argument('--gin_params', nargs='*', type=str, default=[])
+    parser.add_argument('--device', type=str, default=None,
+                        help="auto (default: cuda if available, else cpu), cpu, cuda, or mps. "
+                             "Can also be set with the SYNTHER_DEVICE environment variable.")
     args = parser.parse_args()
+    set_device(args.device)
 
     logger_kwargs = setup_logger_kwargs(args.env, args.log_dir)
 
