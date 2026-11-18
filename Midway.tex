@@ -1,0 +1,89 @@
+% Use the course class when available. The standard class supports local review.
+\newif\ifcourseclass
+\IfFileExists{cmu.cls}{\courseclasstrue}{\courseclassfalse}
+\ifcourseclass
+  \documentclass[11pt,letterpaper]{cmu}
+\else
+  \documentclass[11pt,letterpaper]{article}
+  \usepackage[margin=1in]{geometry}
+\fi
+\usepackage[comma,numbers,sort,compress]{natbib}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Relevance Functions in Prioritized Generative Replay}
+\ifcourseclass
+  \author[1]{Claire Xu}
+  \author[1]{Alan Ramirez}
+  \author[1]{Bowen Jiang}
+  \affil[1]{Carnegie Mellon University}
+  % Add the team's preferred corresponding-author email before submission.
+\else
+  \author{Claire Xu, Alan Ramirez, and Bowen Jiang\\Carnegie Mellon University}
+  \date{}
+\fi
+
+\newcommand{\reportabstract}{%
+We are studying how the choice of a relevance function affects the number of environment interactions an agent needs to learn a sparse-reward task. We implemented Prioritized Generative Replay with curiosity, temporal-difference error, and return as guidance signals, and tested the implementation on Finger Turn. We have begun building a configurable maze so that we can vary the distance to the goal and the availability of reward. In that setting we plan to test whether curiosity remains useful when the generator has little experience near the goal.}
+\ifcourseclass
+  \begin{abstract}\reportabstract\end{abstract}
+\fi
+\begin{document}
+\maketitle
+\ifcourseclass\else
+  \begin{abstract}\reportabstract\end{abstract}
+\fi
+
+\section{Project Overview and Motivation}
+In a maze where reaching the goal is the only way to earn a reward, an agent may spend most of its experience in corridors it already knows. Sampling uniformly from that experience gives the learner few opportunities to revisit a turn that led to the goal. Prioritized Generative Replay (PGR) fits a diffusion model to the agent's experience and uses a relevance score to guide which additional transitions it generates \citep{wang2025pgr}. Our question is how to choose that score as the maze becomes harder to explore.
+
+The original paper gives us a reason to expect the answer to depend on the environment. In its randomized maze experiment, guidance based on episodic reachability produced higher average returns than prediction-error curiosity at both levels of reward sparsity \citep[Appendix~A.2]{wang2025pgr}. We want to vary individual features of a maze and examine where these differences come from. Finger Turn provided an initial sparse-reward task while we worked on the navigation environment proposed at the start of the project.
+
+\section{Progress and Technical Work So Far}
+Working from the released PGR code, we implemented the training loop with the three families of relevance functions described in Section~4.2 of \citet{wang2025pgr}. The agent stores transitions from the simulator in a replay buffer. At intervals, we score those transitions and fit a conditional diffusion model to them. We then draw conditioning scores from the upper end of the observed distribution and generate transitions for a second buffer. The agent trains on batches drawn from both buffers. The relevance score guides generation, while the task reward still determines what the policy learns to do.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}p{0.19\linewidth}p{0.73\linewidth}@{}}
+\toprule
+Signal & How our implementation scores a transition \\
+\midrule
+Curiosity & A forward model predicts the features of the next state from the current state and action. The score is its mean squared prediction error. \\
+TD error & We take the absolute difference between the critic ensemble's mean estimate and its bootstrapped training target. \\
+Return & We sum discounted rewards from the transition onward within the recorded episode. \\
+\bottomrule
+\end{tabular}
+\caption{The three guidance signals in our implementation.}
+\end{table}
+
+Two implementation choices matter when comparing our results with the paper. Its return score uses the critic's estimate under the current policy, while ours uses observed return-to-go. Computing that return requires preserving the order of transitions, including when the replay buffer wraps around, and stopping the sum at episode boundaries. We also use the magnitude of the TD error, so an overestimate and an underestimate of the same size receive the same score. Equation~4 of the paper gives a signed residual.
+
+We tested PGR on Finger Turn. In a separate CPU check on Cheetah Run, the agent collected 200 real transitions before the first diffusion update, trained the generator for 20 steps, and added 1,000 synthetic transitions to replay. Training continued with the generated data. To compare learning performance on Finger Turn, we still need to bring together the episode returns and environment-step counts for each signal.
+% Insert the team's Finger Turn learning curves, seed counts, and run lengths here when available.
+
+\section{Datasets, Environments, and Resources}
+We collect transitions online from the DeepMind Control Suite. In the hard version of Finger Turn, a simulated finger rotates a spinner to bring its tip within a small target. Each step earns one unit of reward while the tip is within the target and zero otherwise. The same episode return can therefore reflect how soon the agent first reaches the target and how long it holds the tip there. We use state observations from the simulator and continuous actions. The local Cheetah Run check used an Apple Silicon CPU and recorded about 12 seconds through the third training epoch.
+% Add the hardware and aggregate runtime for the Finger Turn experiments.
+
+\section{Updated Plan and Next Steps}
+We have begun implementing a maze with configurable layouts and rewards. In Week~3, we plan to start with a short route and verify that a baseline agent can reach the goal. We will then vary the shortest path length while keeping the reward rule fixed. To study reward sparsity separately, we will hold the walls and starting position fixed and compare goal-only reward with a version that also rewards intermediate progress. We will measure goal-reaching success against real environment steps, which gives us a common outcome across reward rules.
+
+In Week~4, we plan to compare guided generation with uniform replay of real transitions, prioritized replay of real transitions, and unguided synthetic replay. We will use the same maze layouts, seeds, and number of policy updates per real step. For methods that generate transitions, we will also match the synthetic share of each batch. We will try additional relevance functions, beginning with a curiosity score that discounts regions where the generator often makes errors. One way to check this idea is to replay a generated action from its proposed starting position in the maze simulator and measure the error in the generated endpoint. A proposed move through a wall would then supply a concrete example of the error we want the score to capture.
+
+In Week~5, we will compare runs across seeds and inspect layouts where the methods differ most. If few agents reach the goal on the harder layouts, we will report how many runs ever reached it and when the first success occurred. This will help us distinguish difficulty discovering a route from difficulty learning to repeat it.
+
+\section{Team Contributions}
+Claire Xu, Alan Ramirez, and Bowen Jiang worked on the project as a team. Our work to date covers the PGR implementation, the Finger Turn tests, and the initial maze implementation.
+% Before submission, identify each member's responsibilities and any changes in workload.
+
+\section{Reflection and Feedback}
+The maze raises a question we could not answer with the Finger Turn test alone. A rarely visited junction may be worth practicing even when the generator predicts its dynamics poorly. Penalizing every large prediction error could remove precisely the examples we hoped to generate. We would appreciate feedback on using simulator checks to evaluate transition accuracy, particularly on whether those checks should be reserved for evaluation or counted in the interaction budget when they influence training.
+
+\begin{thebibliography}{1}
+\bibitem[Wang et~al.(2025)]{wang2025pgr}
+Renhao Wang, Kevin Frans, Pieter Abbeel, Sergey Levine, and Alexei A. Efros.
+Prioritized Generative Replay.
+In \emph{International Conference on Learning Representations}, 2025.
+\url{https://arxiv.org/abs/2410.18082v2}.
+\end{thebibliography}
+\end{document}

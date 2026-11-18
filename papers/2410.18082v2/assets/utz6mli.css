@@ -1,0 +1,87 @@
+/*
+ * The Typekit service used to deliver this font or fonts for use on websites
+ * is provided by Adobe and is subject to these Terms of Use
+ * http://www.adobe.com/products/eulas/tou_typekit. For font license
+ * information, see the list below.
+ *
+ * ibm-plex-mono:
+ *   - http://typekit.com/eulas/00000000000000007735944d
+ *   - http://typekit.com/eulas/00000000000000007735946a
+ * rival-sans:
+ *   - http://typekit.com/eulas/00000000000000007735aa06
+ *   - http://typekit.com/eulas/00000000000000007735aa19
+ *   - http://typekit.com/eulas/00000000000000007735aa1c
+ *   - http://typekit.com/eulas/00000000000000007735aa1f
+ *   - http://typekit.com/eulas/00000000000000007735aa31
+ *   - http://typekit.com/eulas/00000000000000007735aa34
+ *   - http://typekit.com/eulas/00000000000000007735aa36
+ *   - http://typekit.com/eulas/00000000000000007735aa38
+ *
+ * © 2009-2026 Adobe Systems Incorporated. All Rights Reserved.
+ */
+/*{"last_published":"2024-10-15 19:56:54 UTC"}*/
+
+@import url("1946abf5a6c2-p.css");
+
+@font-face {
+font-family:"rival-sans";
+src:url("833ec8cb2a7e-l") format("woff2"),url("21234b948c22-d") format("woff"),url("7900ecc3bc6c-a") format("opentype");
+font-display:auto;font-style:normal;font-weight:100;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("7c5ac2c5664f-l") format("woff2"),url("115a97f2e3ab-d") format("woff"),url("e786eb9ed62c-a") format("opentype");
+font-display:auto;font-style:italic;font-weight:700;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("35519e98cfbd-l") format("woff2"),url("301bc9a3c5e1-d") format("woff"),url("f0e27092f594-a") format("opentype");
+font-display:auto;font-style:normal;font-weight:700;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("f24405ed3862-l") format("woff2"),url("6d806b5a6013-d") format("woff"),url("8d5bd7c68dd5-a") format("opentype");
+font-display:auto;font-style:normal;font-weight:300;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("d4b6c1132b48-l") format("woff2"),url("c5eeef7c6e6a-d") format("woff"),url("a0554b4a4dd9-a") format("opentype");
+font-display:auto;font-style:italic;font-weight:400;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("ce8c80d72721-l") format("woff2"),url("470577d45c94-d") format("woff"),url("25288cce90d1-a") format("opentype");
+font-display:auto;font-style:normal;font-weight:400;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("27537ec5e3a6-l") format("woff2"),url("24cf0e0cf8b9-d") format("woff"),url("6d5cdd8ed53c-a") format("opentype");
+font-display:auto;font-style:italic;font-weight:300;font-stretch:normal;
+}
+
+@font-face {
+font-family:"rival-sans";
+src:url("ded9626aaa22-l") format("woff2"),url("42efa282bfae-d") format("woff"),url("c40d9728166c-a") format("opentype");
+font-display:auto;font-style:italic;font-weight:100;font-stretch:normal;
+}
+
+@font-face {
+font-family:"ibm-plex-mono";
+src:url("6a20509a499b-l") format("woff2"),url("ef023980b884-d") format("woff"),url("3f345c67f895-a") format("opentype");
+font-display:auto;font-style:normal;font-weight:400;font-stretch:normal;
+}
+
+@font-face {
+font-family:"ibm-plex-mono";
+src:url("d4a1526b0dca-l") format("woff2"),url("e67202dc2c55-d") format("woff"),url("f21596b6af3e-a") format("opentype");
+font-display:auto;font-style:normal;font-weight:800;font-stretch:normal;
+}
+
+.tk-rival-sans { font-family: "rival-sans",sans-serif; }
+.tk-ibm-plex-mono { font-family: "ibm-plex-mono",sans-serif; }
