@@ -118,7 +118,9 @@ class ClipToActionSpace(gym.ActionWrapper):
 class LegacyStepAPI:
     """Expose a Gymnasium env through the classic Gym API used by REDQ.
 
-    reset() -> obs;  step(a) -> (obs, reward, done, info) with done = terminated or truncated;
+    reset() -> obs;  step(a) -> (obs, reward, done, info) with done = terminated or truncated,
+    and info['truncated'] carrying that distinction back for callers that need it (e.g. to
+    tell real episode boundaries apart from time-limit cutoffs when `done` alone can't).
     seed(s) takes effect at the next reset (which is when seeds are consumed anyway).
     Everything else (spaces, spec, unwrapped, ...) is forwarded to the wrapped env.
     """
@@ -142,4 +144,6 @@ class LegacyStepAPI:
 
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
+        info = dict(info)
+        info['truncated'] = truncated
         return obs, reward, terminated or truncated, info

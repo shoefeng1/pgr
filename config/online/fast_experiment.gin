@@ -1,0 +1,18 @@
+# Overlay for cheap local prototyping. Pass this AFTER the main config file so these
+# bindings win, e.g.:
+#   --gin_config_files config/online/sac_cond_synther_dmc.gin config/online/fast_experiment.gin
+#
+# Cuts the two most expensive parts of the pipeline for fast iteration on relevance
+# functions: the Q ensemble (REDQ -> vanilla SAC-sized) and the diffusion retrain
+# (100k steps every 10k env steps -> 3k steps every 20k env steps, smaller denoiser).
+# Scale back up once a relevance function looks promising.
+
+# Vanilla SAC instead of a 10-member REDQ ensemble.
+redq_sac.num_Q = 2
+redq_sac.num_min = 2
+
+# Retrain less often, for far fewer steps, on a smaller denoiser.
+redq_sac.retrain_diffusion_every = 20000
+REDQCondTrainer.train_num_steps = 3000
+ResidualMLPDenoiser.mlp_width = 256
+ResidualMLPDenoiser.num_layers = 3

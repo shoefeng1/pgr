@@ -4,6 +4,7 @@ from redq.algos.core import (ReplayBuffer,
                              soft_update_model1_with_model2)
 from redq.algos.redq_sac import REDQSACAgent
 from synther.online.conditional_nets import Curiosity
+from synther.online.relevance import ReturnRelevance, TDErrorRelevance
 from torch import Tensor
 from tqdm import trange
 
@@ -14,16 +15,32 @@ def combine_two_tensors(tensor1, tensor2):
 
 class REDQRLPDCondAgent(REDQSACAgent):
 
-    def __init__(self, cond_hidden_size, diffusion_buffer_size=int(1e6), diffusion_sample_ratio=0.5, *args, **kwargs):
+    def __init__(self, cond_hidden_size, diffusion_buffer_size=int(1e6), diffusion_sample_ratio=0.5,
+                 relevance_type='curiosity', *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # self.replay_buffer already exists from REDQSACAgent.__init__; ReplayBuffer
+        # (synther/REDQ/redq/algos/core.py) always tracks truncation now, so no
+        # subclass/override is needed here.
         self.diffusion_buffer = ReplayBuffer(obs_dim=self.obs_dim, act_dim=self.act_dim, size=diffusion_buffer_size)
         self.diffusion_sample_ratio = diffusion_sample_ratio
 
-        self.cond_net = Curiosity(input_size=self.obs_dim, 
-                                    hidden_size=cond_hidden_size, 
-                                    output_size=self.act_dim).to(self.device)
-        self.cond_optimizer = torch.optim.Adam(self.cond_net.parameters(), lr=self.lr)
-    
+        if relevance_type == 'curiosity':
+            self.cond_net = Curiosity(input_size=self.obs_dim,
+                                        hidden_size=cond_hidden_size,
+                                        output_size=self.act_dim).to(self.device)
+            self.cond_optimizer = torch.optim.Adam(self.cond_net.parameters(), lr=self.lr)
+        elif relevance_type == 'return':
+            self.cond_net = ReturnRelevance(gamma=self.gamma)
+            self.cond_optimizer = None
+        elif relevance_type == 'td_error':
+            self.cond_net = TDErrorRelevance(agent=self)
+            self.cond_optimizer = None
+        else:
+            raise ValueError(f"Unknown relevance_type: {relevance_type!r}")
+
+    def store_data(self, o, a, r, o2, d, truncated=False):
+        self.replay_buffer.store(o, a, r, o2, d, truncated=truncated)
+
     def get_current_num_data(self):
         # used to determine whether we should get action from policy or take random starting actions
         return self.replay_buffer.size

@@ -42,6 +42,41 @@ python synther/online/online_cond.py --env cheetah-run-v0 --gin_config_files con
 python synther/online/online_cond.py --env reacher-hard-v0 --gin_config_files config/online/sac_cond_synther_dmc.gin --gin_params 'redq_sac.cond_top_frac = 0.25'
 ```
 
+### Comparing relevance functions (cheap/fast configs)
+
+`redq_sac.relevance_type` picks what ranks/conditions the diffusion model's samples: ICM
+curiosity (default), discounted return-to-go, or REDQ TD error. `config/online/fast_experiment.gin`
+is a cheap-compute overlay (vanilla-SAC-sized ensemble, smaller/shorter diffusion retrain) for
+fast local iteration; add `--device mps` on Apple Silicon to try the GPU backend. Use a distinct
+`--log_dir`/`--results_folder` per run so they don't overwrite each other's logs.
+
+```bash
+# Curiosity (ICM) baseline
+python synther/online/online_cond.py --env finger-turn_hard-v0 \
+  --gin_config_files config/online/sac_cond_synther_dmc.gin config/online/fast_experiment.gin \
+  --gin_params "redq_sac.epochs = 50" --device mps \
+  --log_dir curiosity --results_folder ./results_finger_curiosity
+```
+
+```bash
+# Return-to-go relevance
+python synther/online/online_cond.py --env finger-turn_hard-v0 \
+  --gin_config_files config/online/sac_cond_synther_dmc_return.gin config/online/fast_experiment.gin \
+  --gin_params "redq_sac.epochs = 50" --device mps \
+  --log_dir return --results_folder ./results_finger_return
+```
+
+```bash
+# TD-error relevance
+python synther/online/online_cond.py --env finger-turn_hard-v0 \
+  --gin_config_files config/online/sac_cond_synther_dmc_tderror.gin config/online/fast_experiment.gin \
+  --gin_params "redq_sac.epochs = 50" --device mps \
+  --log_dir td_error --results_folder ./results_finger_tderror
+```
+
+Results land in `synther/REDQ/data/finger-turn_hard-v0/finger-turn_hard-v0_s<log_dir>/progress.txt`
+(tab-separated, flushed every epoch); the sparse-task metric to compare is `AverageEpRet`.
+
 ## <a name="Citing"></a>Citing PGR
 
 ```BibTeX

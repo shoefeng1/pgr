@@ -595,18 +595,23 @@ class CondDistri(object):
         self.top_frac = top_frac
         self.buffer = buffer
 
-        # Iterate over buffer and generate the conditional generation signal
-        self.irews_buf = np.zeros_like(buffer.rews_buf)
-        # Use some large batch size
-        for i in range(0, buffer.size, train_batch_size):
-            idxs = np.arange(i, min(i + train_batch_size, buffer.size))
-            obs = self.buffer.obs1_buf[idxs]
-            next_obs = self.buffer.obs2_buf[idxs]
-            actions = self.buffer.acts_buf[idxs]
-            rewards = self.buffer.rews_buf[idxs][:, None]
-            done = self.buffer.done_buf[idxs][:, None]
-            with torch.no_grad():
-                self.irews_buf[idxs] = cond_net.compute_reward(obs, next_obs, actions, rewards, done).squeeze().cpu().numpy()
+        # Iterate over buffer and generate the conditional generation signal.
+        # Scorers that need context beyond a single transition (e.g. return-to-go)
+        # implement compute_reward_full(buffer) instead; prefer that when available.
+        if hasattr(cond_net, 'compute_reward_full'):
+            self.irews_buf = cond_net.compute_reward_full(buffer)
+        else:
+            self.irews_buf = np.zeros_like(buffer.rews_buf)
+            # Use some large batch size
+            for i in range(0, buffer.size, train_batch_size):
+                idxs = np.arange(i, min(i + train_batch_size, buffer.size))
+                obs = self.buffer.obs1_buf[idxs]
+                next_obs = self.buffer.obs2_buf[idxs]
+                actions = self.buffer.acts_buf[idxs]
+                rewards = self.buffer.rews_buf[idxs][:, None]
+                done = self.buffer.done_buf[idxs][:, None]
+                with torch.no_grad():
+                    self.irews_buf[idxs] = cond_net.compute_reward(obs, next_obs, actions, rewards, done).squeeze().cpu().numpy()
         
         self.top_frac_indices = np.argsort(self.irews_buf, axis=0)[-int(top_frac * buffer.size):]
 

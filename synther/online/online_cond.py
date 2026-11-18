@@ -63,6 +63,7 @@ def redq_sac(
         cond_top_frac=0.05,
         cfg_scale=1.0,
         cond_hidden_size=128,
+        relevance_type='curiosity',  # 'curiosity' | 'return' | 'td_error'
         # following are bias evaluation related
         evaluate_bias=True,
         n_mc_eval=1000,
@@ -143,7 +144,9 @@ def redq_sac(
         'q_target_mode': q_target_mode,
         'policy_update_delay': policy_update_delay,
     }
-    agent = REDQRLPDCondAgent(cond_hidden_size, diffusion_buffer_size, diffusion_sample_ratio, env_name, obs_dim, act_dim, act_limit, device,
+    agent = REDQRLPDCondAgent(cond_hidden_size, diffusion_buffer_size, diffusion_sample_ratio,
+                              relevance_type,
+                              env_name, obs_dim, act_dim, act_limit, device,
                               hidden_sizes, replay_size, batch_size,lr, gamma, polyak,
                               alpha, auto_alpha, target_entropy,
                               start_steps, delay_update_steps,
@@ -166,25 +169,26 @@ def redq_sac(
         # get action from agent
         a = agent.get_exploration_action(o, env)
         # Step the env, get next observation, reward and done signal
-        o2, r, d, _ = env.step(a)
+        o2, r, d, info = env.step(a)
 
         # Very important: before we let agent store this transition,
         # Ignore the "done" signal if it comes from hitting the time
         # horizon (that is, when it's an artificial terminal signal
-        # that isn't based on the agent's state)
+        # that isn't based on the agent's state). `truncated` tracks that
+        # we ignored it for, so episode boundaries aren't lost entirely
         ep_len += 1
-        d = False if ep_len == max_ep_len else d
-        
+        truncated = info.get('truncated', False) or ep_len == max_ep_len
+        d = False if truncated else d
 
         # give new data to replay buffer
-        agent.store_data(o, a, r, o2, d)
+        agent.store_data(o, a, r, o2, d, truncated=truncated)
         # let agent update
         agent.train(logger)
         # set obs to next obs
         o = o2
         ep_ret += r
 
-        if d or (ep_len == max_ep_len):
+        if d or truncated:
             # store episode return and length to logger
             logger.store(EpRet=ep_ret, EpLen=ep_len)
             # reset environment
@@ -239,7 +243,7 @@ def redq_sac(
                 print(f'Diffusion Reward: {np.mean(rewards):.2f} {np.std(rewards):.2f}')
                 print(f'     Real Reward: {np.mean(real_rewards):.2f} {np.std(real_rewards):.2f}')
                 print(f'Replay buffer size: {ptr_location}')
-                print(f'Diffusion buffer size: {agent.diffusion_buffer.ptr}')
+                print(f'Diffusion buffer size: {agent.diffusion_buffer.size}')
 
         # End of epoch wrap-up
         if (t + 1) % steps_per_epoch == 0:

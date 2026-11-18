@@ -14,6 +14,7 @@ redq_sac.diffusion_start = 0
 redq_sac.skip_reward_norm = True
 
 # Conditional network
+redq_sac.relevance_type = 'curiosity'  # 'curiosity' | 'return' | 'td_error'
 redq_sac.cond_hidden_size = 256
 redq_sac.cond_top_frac = 0.25
 redq_sac.cfg_dropout = 0.25

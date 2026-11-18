@@ -1,0 +1,5 @@
+# Same as sac_cond_synther_dmc.gin, but ranks/conditions on discounted
+# Monte-Carlo return-to-go instead of ICM curiosity.
+include 'config/online/sac_cond_synther_dmc.gin'
+
+redq_sac.relevance_type = 'return'
